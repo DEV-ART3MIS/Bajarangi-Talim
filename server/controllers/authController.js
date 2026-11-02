@@ -36,6 +36,22 @@ exports.register = async (req, res) => {
       });
     }
 
+    // Validate Indian region mobile number if provided
+    let formattedPhone = '';
+    if (phone && phone.trim()) {
+      const cleanDigits = phone.replace(/[\s\-\(\)]/g, '');
+      const indianMobileRegex = /^(?:\+91|91|0)?([6-9]\d{9})$/;
+      const match = cleanDigits.match(indianMobileRegex);
+      if (!match) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9 (e.g., +91 98765 43210).',
+        });
+      }
+      formattedPhone = `+91 ${match[1].slice(0, 5)} ${match[1].slice(5)}`;
+    }
+
     // Check if user already exists
     const existing = await store.findMemberByEmail(email);
     if (existing) {
@@ -54,14 +70,15 @@ exports.register = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      phone: phone || '',
+      phone: formattedPhone || phone || '',
       membershipPlan: membershipPlan || 'Warrior Pro',
       billingCycle: billingCycle || 'monthly',
       fitnessGoal: fitnessGoal || 'Strength & Conditioning',
       status: 'Active',
       role: req.body.role && ['member', 'trainer', 'admin'].includes(req.body.role) ? req.body.role : 'member',
-      assignedTrainer: req.body.assignedTrainer || 'Coach Ananya Roy',
+      assignedTrainer: req.body.assignedTrainer || 'Coach Nikhil Kotkar',
       specialization: req.body.specialization || '',
+      oauthProvider: 'local',
     });
 
     const token = generateToken(newMember);
@@ -173,6 +190,114 @@ exports.getMe = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error retrieving profile.',
+    });
+  }
+};
+
+// @desc    OAuth Sign Up & Sign In (Google & GitHub)
+// @route   POST /api/auth/oauth
+exports.oauthLogin = async (req, res) => {
+  try {
+    const { provider, email, name, avatar, oauthId, phone } = req.body;
+
+    if (!provider || !['google', 'github'].includes(provider)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OAuth provider. Must be google or github.',
+      });
+    }
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'OAuth profile did not return a valid email address.',
+      });
+    }
+
+    // Format Indian phone if provided
+    let formattedPhone = '';
+    if (phone && phone.trim()) {
+      const cleanDigits = phone.replace(/[\s\-\(\)]/g, '');
+      const indianMobileRegex = /^(?:\+91|91|0)?([6-9]\d{9})$/;
+      const match = cleanDigits.match(indianMobileRegex);
+      if (match) {
+        formattedPhone = `+91 ${match[1].slice(0, 5)} ${match[1].slice(5)}`;
+      }
+    }
+
+    // Check if user exists by oauthId or by email
+    let user = null;
+    if (oauthId) {
+      user = await store.findMemberByOAuth(provider, oauthId);
+    }
+    if (!user) {
+      user = await store.findMemberByEmail(email);
+    }
+
+    if (user) {
+      // User exists: update oauth info if needed
+      if (!user.oauthProvider || user.oauthProvider === 'local') {
+        user = await store.updateMemberOAuth(user._id, {
+          oauthProvider: provider,
+          oauthId: oauthId || user.oauthId || `${provider}_${Date.now()}`,
+          avatar: avatar || user.avatar,
+        });
+      }
+    } else {
+      // Create new user via OAuth
+      const salt = await bcrypt.genSalt(10);
+      const randomPassword = await bcrypt.hash(`oauth_${provider}_${Date.now()}_${Math.random()}`, salt);
+
+      const defaultName = provider === 'google' ? 'Google Athlete' : 'GitHub Athlete';
+
+      user = await store.createMember({
+        name: name || defaultName,
+        email: email.toLowerCase(),
+        password: randomPassword,
+        phone: formattedPhone || phone || '',
+        membershipPlan: 'Warrior Pro',
+        billingCycle: 'monthly',
+        fitnessGoal: 'Strength & Conditioning',
+        status: 'Active',
+        role: 'member',
+        assignedTrainer: 'Coach Nikhil Kotkar',
+        specialization: '',
+        oauthProvider: provider,
+        oauthId: oauthId || `${provider}_${Date.now()}`,
+        avatar: avatar || '',
+      });
+    }
+
+    const token = generateToken(user);
+
+    res.status(200).json({
+      success: true,
+      message: `Welcome ${user.name}! Successfully authenticated with ${
+        provider.charAt(0).toUpperCase() + provider.slice(1)
+      }.`,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        membershipPlan: user.membershipPlan,
+        billingCycle: user.billingCycle,
+        status: user.status,
+        fitnessGoal: user.fitnessGoal,
+        role: user.role,
+        oauthProvider: user.oauthProvider || provider,
+        avatar: user.avatar || avatar || '',
+        joinDate: user.joinDate,
+        expiryDate: user.expiryDate,
+      },
+      dbLive: store.isDbLive(),
+    });
+  } catch (err) {
+    console.error('OAuth sign in error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during OAuth sign in: ' + err.message,
     });
   }
 };

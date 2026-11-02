@@ -405,6 +405,36 @@ const store = {
     return memoryMembers.find((m) => m.email.toLowerCase() === email.toLowerCase());
   },
 
+  async findMemberByOAuth(provider, oauthId) {
+    if (!provider || !oauthId) return null;
+    if (isDbLive()) {
+      return await Member.findOne({ oauthProvider: provider, oauthId });
+    }
+    return memoryMembers.find(
+      (m) => m.oauthProvider === provider && m.oauthId === oauthId
+    );
+  },
+
+  async updateMemberOAuth(id, { oauthProvider, oauthId, avatar }) {
+    if (isDbLive()) {
+      return await Member.findByIdAndUpdate(
+        id,
+        { $set: { oauthProvider, oauthId, ...(avatar ? { avatar } : {}) } },
+        { new: true }
+      ).select('-password');
+    }
+    const index = memoryMembers.findIndex((m) => m._id.toString() === id.toString());
+    if (index !== -1) {
+      if (oauthProvider) memoryMembers[index].oauthProvider = oauthProvider;
+      if (oauthId) memoryMembers[index].oauthId = oauthId;
+      if (avatar) memoryMembers[index].avatar = avatar;
+      memoryMembers[index].updatedAt = new Date();
+      const { password, ...safe } = memoryMembers[index];
+      return safe;
+    }
+    return null;
+  },
+
   async findMemberById(id) {
     if (isDbLive()) {
       return await Member.findById(id).select('-password');

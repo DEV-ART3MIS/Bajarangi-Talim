@@ -60,6 +60,18 @@ export const AuthProvider = ({ children }) => {
     return { success: false, message: res.message || 'Registration failed' };
   };
 
+  const oauthLogin = async (oauthData) => {
+    const res = await api.oauthLogin(oauthData);
+    if (res.success && res.token) {
+      localStorage.setItem('bt_token', res.token);
+      setToken(res.token);
+      setUser(res.user);
+      closeAuthModal();
+      return { success: true, message: res.message, user: res.user };
+    }
+    return { success: false, message: res.message || 'OAuth authentication failed' };
+  };
+
   const logout = () => {
     localStorage.removeItem('bt_token');
     setToken(null);
@@ -91,6 +103,7 @@ export const AuthProvider = ({ children }) => {
         authModal,
         login,
         register,
+        oauthLogin,
         logout,
         updateUserState,
         openAuthModal,

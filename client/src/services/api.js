@@ -46,6 +46,15 @@ export const api = {
     return await res.json();
   },
 
+  async oauthLogin(oauthData) {
+    const res = await fetch(`${API_BASE}/auth/oauth`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(oauthData),
+    });
+    return await res.json();
+  },
+
   async getMe() {
     const res = await fetch(`${API_BASE}/auth/me`, {
       headers: getHeaders(true),

@@ -16,8 +16,23 @@ const memberSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Please provide a secure password'],
+      required: function () {
+        return !this.oauthProvider || this.oauthProvider === 'local';
+      },
       minlength: 6,
+    },
+    oauthProvider: {
+      type: String,
+      enum: ['local', 'google', 'github'],
+      default: 'local',
+    },
+    oauthId: {
+      type: String,
+      default: '',
+    },
+    avatar: {
+      type: String,
+      default: '',
     },
     phone: {
       type: String,
