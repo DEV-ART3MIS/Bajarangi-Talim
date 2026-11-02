@@ -1,0 +1,35 @@
+{
+  "name": "bajarangi-talim",
+  "version": "1.0.0",
+  "description": "Full-stack web application for Bajarangi Talim gym with modern dark theme, animated workout library, BMI calculator, member management, and MongoDB Atlas.",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "server": "node server/server.js",
+    "client": "npm run dev --prefix client",
+    "build": "npm run build --prefix client",
+    "dev": "node server/server.js"
+  },
+  "keywords": [
+    "gym",
+    "talim",
+    "fitness",
+    "wrestling",
+    "mongodb",
+    "express",
+    "react",
+    "bajarangi"
+  ],
+  "author": "Bajarangi Talim",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.8.0",
+    "mongoose": "^9.11.4"
+  }
+}
