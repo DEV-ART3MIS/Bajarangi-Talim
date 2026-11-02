@@ -17,14 +17,68 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// Configured CORS to allow both frontend Vercel deployment and local dev
+const allowedOrigins = [
+  'https://bajarangi-gym.vercel.app',
+  'https://bajarangi-talim-server.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000',
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app')
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  })
+);
+
 app.use(express.json());
 
 // API Request logger
 app.use((req, res, next) => {
   console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
   next();
+});
+
+// Middleware to ensure DB is connected during serverless requests
+app.use(async (req, res, next) => {
+  if (!getIsConnected() && process.env.MONGODB_URI) {
+    try {
+      await connectDB();
+      if (getIsConnected()) {
+        await store.initDbStore();
+      }
+    } catch (err) {
+      console.warn('DB connect error in serverless request:', err.message);
+    }
+  }
+  next();
+});
+
+// Root route for backend server verification
+app.get('/', (req, res) => {
+  res.json({
+    gym: 'बजरंगी तालीम (Bajarangi Talim)',
+    role: 'Official Backend API Server',
+    status: 'online',
+    version: '1.0.0',
+    connectedFrontend: 'https://bajarangi-gym.vercel.app',
+    healthCheck: '/api/health',
+    dbConnected: getIsConnected(),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Mount API Routes
@@ -38,14 +92,15 @@ app.use('/api/payment', paymentRoutes);
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
-    gym: 'Bajarangi Talim',
+    gym: 'बजरंगी तालीम',
     version: '1.0.0',
     dbConnected: getIsConnected(),
+    connectedFrontend: 'https://bajarangi-gym.vercel.app',
     timestamp: new Date().toISOString(),
   });
 });
 
-// Serve frontend build in production if present
+// Serve frontend build in production if present locally
 const clientDistPath = path.join(__dirname, '../client/dist');
 app.use(express.static(clientDistPath));
 
@@ -87,4 +142,13 @@ const startServer = async () => {
   });
 };
 
-startServer();
+// Start listener for local dev or initialize for serverless
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  startServer();
+} else {
+  connectDB().then(() => {
+    if (getIsConnected()) store.initDbStore();
+  }).catch(() => {});
+}
+
+module.exports = app;

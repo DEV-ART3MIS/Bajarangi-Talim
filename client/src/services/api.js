@@ -1,4 +1,17 @@
-const API_BASE = '/api';
+const getApiBase = () => {
+  // If explicitly configured via environment variable
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // When running on production Vercel frontend domain
+  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    return 'https://bajarangi-talim-server.vercel.app/api';
+  }
+  // Default to relative /api for local dev proxy
+  return '/api';
+};
+
+const API_BASE = getApiBase();
 
 const getHeaders = (withAuth = false) => {
   const headers = {
