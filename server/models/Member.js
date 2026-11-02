@@ -60,7 +60,7 @@ const memberSchema = new mongoose.Schema(
     },
     assignedTrainer: {
       type: String,
-      default: 'Coach Ananya Roy',
+      default: 'Coach Nikhil Kotkar',
     },
     specialization: {
       type: String,
@@ -68,12 +68,25 @@ const memberSchema = new mongoose.Schema(
     },
     coachNotes: {
       type: String,
-      default: 'Focus on explosive hip drive during Gada swings; increase deadlift load by 5kg next cycle.',
+      default: 'Focus on explosive hip drive during Gada swings; maintain neutral spine on heavy squats.',
     },
     attendanceRate: {
       type: Number,
       default: 94,
     },
+    payments: [
+      {
+        paymentId: { type: String },
+        orderId: { type: String },
+        amount: { type: Number },
+        currency: { type: String, default: 'INR' },
+        method: { type: String, default: 'Razorpay UPI/Card' },
+        plan: { type: String },
+        billingCycle: { type: String },
+        status: { type: String, default: 'captured' },
+        paidAt: { type: Date, default: Date.now },
+      },
+    ],
     workoutStats: {
       weeklyWorkouts: { type: Number, default: 4 },
       totalCalories: { type: Number, default: 3450 },

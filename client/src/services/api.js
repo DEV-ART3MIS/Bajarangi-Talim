@@ -129,5 +129,29 @@ export const api = {
     const res = await fetch(`${API_BASE}/exercises/meta/filters`);
     return await res.json();
   },
+
+  // Razorpay Payment Integration
+  async getPaymentConfig() {
+    const res = await fetch(`${API_BASE}/payment/config`);
+    return await res.json();
+  },
+
+  async createPaymentOrder(orderData) {
+    const res = await fetch(`${API_BASE}/payment/create-order`, {
+      method: 'POST',
+      headers: getHeaders(true),
+      body: JSON.stringify(orderData),
+    });
+    return await res.json();
+  },
+
+  async verifyPayment(paymentData) {
+    const res = await fetch(`${API_BASE}/payment/verify`, {
+      method: 'POST',
+      headers: getHeaders(true),
+      body: JSON.stringify(paymentData),
+    });
+    return await res.json();
+  },
 };
 

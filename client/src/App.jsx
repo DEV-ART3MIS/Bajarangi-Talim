@@ -45,7 +45,12 @@ const MainApp = () => {
         )}
         {activePage === 'about' && <AboutPage setActivePage={setActivePage} />}
         {activePage === 'trainers' && <TrainersPage setActivePage={setActivePage} />}
-        {activePage === 'pricing' && <MembershipPage setActivePage={setActivePage} />}
+        {activePage === 'pricing' && (
+          <MembershipPage
+            setActivePage={setActivePage}
+            onOpenMembershipCard={() => setIsCardModalOpen(true)}
+          />
+        )}
         {activePage === 'exercises' && (
           <ExercisesPage initialExerciseId={initialExerciseId} />
         )}

@@ -1,13 +1,28 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Flame, Sparkles, Shield, Zap, HelpCircle, ArrowRight } from 'lucide-react';
+import {
+  CheckCircle2,
+  Flame,
+  Sparkles,
+  Shield,
+  Zap,
+  HelpCircle,
+  ArrowRight,
+  ShieldCheck,
+  CreditCard,
+  Lock,
+  Smartphone,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import RazorpayModal from '../components/RazorpayModal';
 
-const MembershipPage = ({ setActivePage }) => {
+const MembershipPage = ({ setActivePage, onOpenMembershipCard }) => {
   const { user, openAuthModal, updateUserState } = useAuth();
   const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' or 'annual'
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [upgradeSuccess, setUpgradeSuccess] = useState('');
+  const [isRazorpayModalOpen, setIsRazorpayModalOpen] = useState(false);
+  const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
 
   const plans = [
     {
@@ -72,31 +87,14 @@ const MembershipPage = ({ setActivePage }) => {
     },
   ];
 
-  const handleSelectPlan = async (planName) => {
-    if (!user) {
-      openAuthModal('register', planName);
-      return;
-    }
+  const handleOpenRazorpay = (plan) => {
+    setSelectedPlanForPayment(plan);
+    setIsRazorpayModalOpen(true);
+  };
 
-    setLoadingPlan(planName);
-    setUpgradeSuccess('');
-
-    try {
-      const res = await api.updateMemberPlan(user.id, {
-        membershipPlan: planName,
-        billingCycle,
-      });
-
-      if (res.success && res.member) {
-        updateUserState(res.member);
-        setUpgradeSuccess(`Successfully upgraded to ${planName}!`);
-        setTimeout(() => setUpgradeSuccess(''), 4000);
-      }
-    } catch (err) {
-      console.error('Plan upgrade error:', err);
-    } finally {
-      setLoadingPlan(null);
-    }
+  const handleSelectPlan = async (plan) => {
+    // Open Razorpay Payment Modal
+    handleOpenRazorpay(plan);
   };
 
   return (
@@ -137,6 +135,23 @@ const MembershipPage = ({ setActivePage }) => {
               Save 20%
             </span>
           </div>
+        </div>
+
+        {/* Razorpay Gateway Badges & Demo Trigger */}
+        <div className="pt-3 max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#121622]/90 border border-sky-900/40 text-xs">
+          <div className="flex items-center space-x-2 text-sky-400 font-bold">
+            <ShieldCheck className="w-4 h-4 text-sky-400 shrink-0" />
+            <span>Razorpay Payments Enabled</span>
+            <span className="text-gray-400 font-normal">| UPI • Cards • NetBanking</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleOpenRazorpay(plans[1])}
+            className="w-full sm:w-auto px-3.5 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold text-[11px] uppercase tracking-wider flex items-center justify-center space-x-1.5 transition"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>Test Demo Payment</span>
+          </button>
         </div>
       </div>
 
@@ -218,9 +233,9 @@ const MembershipPage = ({ setActivePage }) => {
               {/* Action Button */}
               <div className="pt-8">
                 <button
-                  onClick={() => handleSelectPlan(plan.name)}
+                  onClick={() => handleSelectPlan(plan)}
                   disabled={loadingPlan === plan.name}
-                  className={`w-full py-3.5 px-6 rounded-xl font-black text-xs uppercase tracking-wider transition transform hover:-translate-y-0.5 active:translate-y-0 shadow-lg ${
+                  className={`w-full py-3.5 px-6 rounded-xl font-black text-xs uppercase tracking-wider transition transform hover:-translate-y-0.5 active:translate-y-0 shadow-lg flex items-center justify-center space-x-1.5 ${
                     isCurrent
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-default'
                       : plan.popular
@@ -228,21 +243,43 @@ const MembershipPage = ({ setActivePage }) => {
                       : 'bg-gray-800 hover:bg-gray-700 text-white border border-gray-700'
                   }`}
                 >
-                  {loadingPlan === plan.name ? (
-                    'Processing...'
-                  ) : isCurrent ? (
-                    '● Your Current Active Plan'
-                  ) : user ? (
-                    `Switch to ${plan.name}`
-                  ) : (
-                    `Join with ${plan.name}`
-                  )}
+                  <Lock className="w-3.5 h-3.5 opacity-80" />
+                  <span>
+                    {isCurrent
+                      ? '● Your Current Active Plan'
+                      : user
+                      ? `Switch to ${plan.name} • ₹${price.toLocaleString('en-IN')}`
+                      : `Join with ${plan.name} • ₹${price.toLocaleString('en-IN')}`}
+                  </span>
                 </button>
+                <div className="text-center mt-2">
+                  <span className="text-[10px] text-gray-500 flex items-center justify-center space-x-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-500/70" />
+                    <span>Instant Razorpay Checkout & Demo Enabled</span>
+                  </span>
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Razorpay Interactive Modal */}
+      <RazorpayModal
+        isOpen={isRazorpayModalOpen}
+        onClose={() => setIsRazorpayModalOpen(false)}
+        plan={selectedPlanForPayment}
+        billingCycle={billingCycle}
+        onPaymentSuccess={(updatedMember) => {
+          setUpgradeSuccess(`🎉 Razorpay payment confirmed! Subscribed to ${selectedPlanForPayment?.name}.`);
+          setTimeout(() => setUpgradeSuccess(''), 5000);
+        }}
+        onOpenMembershipCard={onOpenMembershipCard}
+        onGoToDashboard={() => {
+          setIsRazorpayModalOpen(false);
+          setActivePage('dashboard');
+        }}
+      />
 
       {/* Gym Membership FAQs */}
       <div className="max-w-4xl mx-auto space-y-6 pt-10">
